@@ -9,6 +9,7 @@ university_list = [
 class ItemPost(models.Model):
     UNIVERSITY_CHOICES = university_list
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="items")
+    university = models.CharField(max_length=10, choices=UNIVERSITY_CHOICES, default='AASTU')
     title = models.CharField(max_length=100)
     description = models.TextField()
     location_text = models.CharField(max_length=255)
@@ -23,6 +24,7 @@ class ContactRequest(models.Model):
     from_user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="sent_requests")
     to_user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="received_requests")
     item = models.ForeignKey(ItemPost, on_delete=models.CASCADE, related_name="contact_requests")
+    created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
         return f"Request from {self.from_user.telegram_username} to {self.to_user.telegram_username} for {self.item.title}"
