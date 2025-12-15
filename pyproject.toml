@@ -8,3 +8,27 @@ dependencies = [
     "django>=6.0",
     "djangorestframework>=3.16.1",
 ]
+
+[tool.black]
+line-length = 88
+target-version = ["py312"]
+
+[tool.ruff]
+line-length = 88
+target-version = "py312"
+exclude = [".git", ".venv", "db.sqlite3"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+docstring-code-format = true
+
+[tool.ruff.lint]
+extend-select = ["I"]
+
+[tool.uv]
+dev-dependencies = [
+    "black>=24.10.0",
+    "ruff>=0.7.0",
+    "pre-commit>=3.8.0",
+]

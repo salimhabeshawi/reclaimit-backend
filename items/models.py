@@ -1,15 +1,20 @@
 from django.db import models
+
 from accounts.models import User
 
 university_list = [
     ("AASTU", "Addis Ababa Science and Technology Univesity"),
+    ("ASTU", "Adama Science and Technology University"),
+    ("AAU", "Addis Ababa University"),
 ]
 
-# Create your models here.
+
 class ItemPost(models.Model):
     UNIVERSITY_CHOICES = university_list
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="items")
-    university = models.CharField(max_length=10, choices=UNIVERSITY_CHOICES, default='AASTU')
+    university = models.CharField(
+        max_length=10, choices=UNIVERSITY_CHOICES, default="AASTU"
+    )
     title = models.CharField(max_length=100)
     description = models.TextField()
     location_text = models.CharField(max_length=255)
@@ -19,11 +24,18 @@ class ItemPost(models.Model):
 
     def __str__(self):
         return f"{self.title} ({self.user.telegram_username})"
-    
+
+
 class ContactRequest(models.Model):
-    from_user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="sent_requests")
-    to_user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="received_requests")
-    item = models.ForeignKey(ItemPost, on_delete=models.CASCADE, related_name="contact_requests")
+    from_user = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name="sent_requests"
+    )
+    to_user = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name="received_requests"
+    )
+    item = models.ForeignKey(
+        ItemPost, on_delete=models.CASCADE, related_name="contact_requests"
+    )
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
