@@ -10,6 +10,11 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
         model = User
         fields = ("telegram_username", "full_name", "email", "password")
 
+    def validate_telegram_username(self, value):
+        if not value.startswith("@"):
+            raise serializers.ValidationError("Telegram username must start with '@'")
+        return value
+
     def create(self, validated_data):
         user = User.objects.create_user(
             telegram_username=validated_data["telegram_username"],
