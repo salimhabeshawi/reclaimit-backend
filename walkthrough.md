@@ -1,9 +1,11 @@
 # ReclaimIt Backend Walkthrough
 
 ## Overview
+
 ReclaimIt is a Django REST API for managing "Found" items on campus. It allows students to post items they found and other students to claim them by sending a contact request.
 
 ## Features
+
 - **Authentication**: Token-based (using `telegram_username` and `password`).
 - **Items**: Post found items (University, Location, Description).
 - **Claims**: Send "Contact Requests" to claim an item.
@@ -13,28 +15,33 @@ ReclaimIt is a Django REST API for managing "Found" items on campus. It allows s
 ## Endpoints
 
 ### Accounts
-| Method | Endpoint | Description |
-| :--- | :--- | :--- |
+
+| Method | Endpoint         | Description                                                                                     |
+| :----- | :--------------- | :---------------------------------------------------------------------------------------------- |
 | `POST` | `/api/register/` | Register a new user. Required: `telegram_username`, `password`. Optional: `full_name`, `email`. |
-| `POST` | `/api/login/` | obtain auth token. Required: `username` (use telegram_username), `password`. |
+| `POST` | `/api/login/`    | obtain auth tokens. Required: `telegram_username`, `password`.                                  |
 
 ### Items
-| Method | Endpoint | Description |
-| :--- | :--- | :--- |
-| `GET` | `/api/items/` | List all found items. Filter: `?university=AASTU`. |
-| `POST` | `/api/items/` | Post a found item. |
-| `GET` | `/api/items/{id}/` | Retrieve item details. |
-| `POST` | `/api/items/{id}/resolve/` | Mark item as resolved (Owner only). |
+
+| Method | Endpoint                   | Description                                                        |
+| :----- | :------------------------- | :----------------------------------------------------------------- |
+| `GET`  | `/api/items/`              | List all found items. Filter: `?university=AASTU`. (Requires Auth) |
+| `POST` | `/api/items/`              | Post a found item.                                                 |
+| `GET`  | `/api/items/{id}/`         | Retrieve item details.                                             |
+| `POST` | `/api/items/{id}/resolve/` | Mark item as resolved (Owner only).                                |
 
 ### Requests
-| Method | Endpoint | Description |
-| :--- | :--- | :--- |
-| `GET` | `/api/requests/` | List requests. **Finder** sees requests received (and sees the **Claimant's username**). **Claimant** sees their sent requests. |
-| `POST` | `/api/requests/` | Create a request (Claim an item). Payload: `{"item": <id>}`. |
+
+| Method | Endpoint                     | Description                                                                                                                                                               |
+| :----- | :--------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `GET`  | `/api/requests/`             | List requests. **Finder** sees requests received (including **Claimant's** username). **Claimant** sees their sent requests (Finder's username is hidden until accepted). |
+| `POST` | `/api/requests/`             | Create a request (Claim an item). Payload: `{"item": <id>}`.                                                                                                              |
+| `POST` | `/api/requests/{id}/accept/` | Accept a request (Finder only). This reveals the Finder's telegram username to the Claimant.                                                                              |
 
 ## Usage Examples
 
 ### 1. Register
+
 ```bash
 curl -X POST http://localhost:8000/api/register/ \
      -H "Content-Type: application/json" \
@@ -42,17 +49,20 @@ curl -X POST http://localhost:8000/api/register/ \
 ```
 
 ### 2. Login
+
 ```bash
 curl -X POST http://localhost:8000/api/login/ \
      -H "Content-Type: application/json" \
-     -d '{"username": "@alex", "password": "securepass"}'
+     -d '{"telegram_username": "@alex", "password": "securepass"}'
 ```
-*Response:* `{"token": "abcdef..."}`
+
+_Response:_ `{"access": "eyJ...", "refresh": "eyJ..."}`
 
 ### 3. Post Found Item (as Finder)
+
 ```bash
 curl -X POST http://localhost:8000/api/items/ \
-     -H "Authorization: Token abcdef..." \
+     -H "Authorization: Bearer <access_token>" \
      -H "Content-Type: application/json" \
      -d '{
            "university": "AASTU",
@@ -64,28 +74,41 @@ curl -X POST http://localhost:8000/api/items/ \
 ```
 
 ### 4. Claim Item (as Loser)
+
 ```bash
 curl -X POST http://localhost:8000/api/requests/ \
-     -H "Authorization: Token xyz789..." \
+     -H "Authorization: Bearer <access_token>" \
      -H "Content-Type: application/json" \
      -d '{"item": 1}'
 ```
 
-### 5. View Requests (as Finder)
+### 5. Accept Request (as Finder)
+
+```bash
+curl -X POST http://localhost:8000/api/requests/1/accept/ \
+     -H "Authorization: Bearer <finder_token>"
+```
+
+### 6. View Requests & See Finder Username (as Loser/Claimant)
+
 ```bash
 curl -X GET http://localhost:8000/api/requests/ \
-     -H "Authorization: Token abcdef..."
+     -H "Authorization: Bearer <loser_token>"
 ```
-*Response*: JSON list containing `from_user: { telegram_username: ... }`.
 
-### 6. Resolve Item (as Finder)
+_Response_: JSON list containing `to_user_data: { telegram_username: "@finder_user" }` (only if accepted).
+
+### 7. Resolve Item (as Finder)
+
 ```bash
 curl -X POST http://localhost:8000/api/items/1/resolve/ \
-     -H "Authorization: Token abcdef..."
+     -H "Authorization: Bearer <access_token>"
 ```
-*Response*: `{"status": "item marked as resolved"}`
+
+_Response_: `{"status": "item marked as resolved"}`
 
 ## Setup & Run
+
 1. **Migrations**: `uv run python manage.py migrate`
 2. **Run Server**: `uv run python manage.py runserver`
 3. **Create Superuser**: `uv run python manage.py createsuperuser`

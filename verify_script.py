@@ -1,17 +1,18 @@
 import os
 import sys
+import time
 
 import django
-from django.contrib.auth import get_user_model
-from rest_framework.test import APIClient
-
-from items.models import ContactRequest, ItemPost
 
 # Setup Django environment
 sys.path.append("/home/salimhabeshawi/reclaimit-backend")
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings")
 django.setup()
 
+from django.contrib.auth import get_user_model  # noqa: E402
+from rest_framework.test import APIClient  # noqa: E402
+
+from items.models import ItemPost  # noqa: E402
 
 User = get_user_model()
 
@@ -19,22 +20,32 @@ User = get_user_model()
 def run_verification():
     print("Starting Verification...")
 
-    # Clean up
-    User.objects.all().delete()
-    ItemPost.objects.all().delete()
-    ContactRequest.objects.all().delete()
+    unique_suffix = int(time.time())
+    finder_username = f"@finder_{unique_suffix}"
+    loser_username = f"@loser_{unique_suffix}"
 
     client = APIClient()
 
+    # 0. Check Authorization for Items
+    print("0. Checking Authorization for Items (Unauthenticated)...")
+    resp_items_unauth = client.get("/api/items/")
+    if resp_items_unauth.status_code == 401:
+        print("SUCCESS: Items list is restricted to authenticated users")
+    else:
+        print(
+            f"FAILED: Items list is accessible without auth: Status {resp_items_unauth.status_code}"
+        )
+        return
+
     # 1. Register Users
-    print("1. Registering Users...")
+    print(f"1. Registering Users ({finder_username}, {loser_username})...")
     finder_data = {
-        "telegram_username": "@finder",
+        "telegram_username": finder_username,
         "password": "password123",
         "full_name": "Finder User",
     }
     loser_data = {
-        "telegram_username": "@loser",
+        "telegram_username": loser_username,
         "password": "password123",
         "full_name": "Loser User",
     }
@@ -53,36 +64,30 @@ def run_verification():
     else:
         print("SUCCESS: Registered Loser")
 
-    # Login to get tokens (simulate usage)
+    # Login to get tokens (simulated)
     resp_token_f = client.post(
-        "/api/login/", {"username": "@finder", "password": "password123"}
+        "/api/login/", {"telegram_username": finder_username, "password": "password123"}
     )
-    if "token" in resp_token_f.data:
-        token_finder = resp_token_f.data["token"]
-        print("SUCCESS: Finder Logged In")
-    elif (
-        "auth_token" in resp_token_f.data
-    ):  # DRF sometimes returns 'auth_token' depending on version/config? No, default is 'token'.
-        token_finder = resp_token_f.data[
-            "auth_token"
-        ]  # Authtoken default view returns {"token": ...}
+    if "access" in resp_token_f.data:
+        token_finder = resp_token_f.data["access"]
+        print("SUCCESS: Finder Logged In (JWT)")
     else:
         print(f"FAILED: Finder Login: {resp_token_f.data}")
-        # DRF obtain_auth_token expects 'username' and 'password'
-        # User model uses telegram_username as USERNAME_FIELD so we pass that as 'username'
+        return
 
     resp_token_l = client.post(
-        "/api/login/", {"username": "@loser", "password": "password123"}
+        "/api/login/", {"telegram_username": loser_username, "password": "password123"}
     )
-    if "token" in resp_token_l.data:
-        token_loser = resp_token_l.data["token"]
-        print("SUCCESS: Loser Logged In")
+    if "access" in resp_token_l.data:
+        token_loser = resp_token_l.data["access"]
+        print("SUCCESS: Loser Logged In (JWT)")
     else:
         print(f"FAILED: Loser Login: {resp_token_l.data}")
+        return
 
     # 2. Post Item (As Finder)
     print("2. Posting Item...")
-    client.credentials(HTTP_AUTHORIZATION="Token " + token_finder)
+    client.credentials(HTTP_AUTHORIZATION="Bearer " + token_finder)
     item_data = {
         "university": "AASTU",
         "title": "Found Wallet",
@@ -100,7 +105,7 @@ def run_verification():
 
     # 3. Create Contact Request (As Loser)
     print("3. Creating Contact Request...")
-    client.credentials(HTTP_AUTHORIZATION="Token " + token_loser)
+    client.credentials(HTTP_AUTHORIZATION="Bearer " + token_loser)
     req_data = {"item": item_id}
     resp_req = client.post("/api/requests/", req_data)
     if resp_req.status_code == 201:
@@ -109,28 +114,52 @@ def run_verification():
         print(f"FAILED: Create Request: {resp_req.data}")
         return
 
-    # 4. Verify Visibility (Finder sees request)
-    print("4. Verifying Visibility...")
-    client.credentials(HTTP_AUTHORIZATION="Token " + token_finder)
-    resp_list = client.get("/api/requests/")
-    if resp_list.status_code == 200:
-        results = resp_list.data  # Should be list or paginated
-        if isinstance(results, dict) and "results" in results:
-            results = results["results"]
+    # 4. Verify Privacy (Loser cannot see Finder's username initially)
+    print("4. Verifying Privacy (Loser seeing Finder)...")
+    client.credentials(HTTP_AUTHORIZATION="Bearer " + token_loser)
+    resp_list_l = client.get("/api/requests/")
+    req_id = resp_list_l.data[0]["id"]
+    if "telegram_username" in resp_list_l.data[0]["to_user_data"]:
+        print("FAILED: Loser can see Finder username before acceptance")
+        return
+    else:
+        print("SUCCESS: Finder username hidden from Loser initially")
 
-        if (
-            len(results) > 0
-            and results[0]["from_user"]["telegram_username"] == "@loser"
-        ):
-            print(
-                f"SUCCESS: Finder sees request from {results[0]['from_user']['telegram_username']}"
-            )
-        else:
-            print(f"FAILED: Finder cannot see request: {results}")
+    # 5. Verify Visibility (Finder sees request with Loser's username)
+    print("5. Verifying Finder Visibility...")
+    client.credentials(HTTP_AUTHORIZATION="Bearer " + token_finder)
+    resp_list_f = client.get("/api/requests/")
+    if (
+        len(resp_list_f.data) > 0
+        and resp_list_f.data[0]["from_user_data"]["telegram_username"] == loser_username
+    ):
+        print(f"SUCCESS: Finder sees request from {loser_username}")
+    else:
+        print(f"FAILED: Finder cannot see request from Loser: {resp_list_f.data}")
+        return
 
-    # 5. Verify Resolve Logic
-    print("5. Verifying Resolve Logic...")
-    client.credentials(HTTP_AUTHORIZATION="Token " + token_finder)
+    # 6. Accept Request (As Finder)
+    print("6. Accepting Request...")
+    resp_accept = client.post(f"/api/requests/{req_id}/accept/")
+    if resp_accept.status_code == 200:
+        print("SUCCESS: Request Accepted")
+    else:
+        print(f"FAILED: Accept Request: {resp_accept.data}")
+        return
+
+    # 7. Verify Privacy (Loser can NOW see Finder's username)
+    print("7. Verifying Visibility after Acceptance...")
+    client.credentials(HTTP_AUTHORIZATION="Bearer " + token_loser)
+    resp_list_l2 = client.get("/api/requests/")
+    if resp_list_l2.data[0]["to_user_data"].get("telegram_username") == finder_username:
+        print(f"SUCCESS: Loser can now see Finder username: {finder_username}")
+    else:
+        print("FAILED: Loser still cannot see Finder username")
+        return
+
+    # 8. Verify Resolve Logic
+    print("8. Verifying Resolve Logic...")
+    client.credentials(HTTP_AUTHORIZATION="Bearer " + token_finder)
     resp_resolve = client.post(f"/api/items/{item_id}/resolve/")
     if resp_resolve.status_code == 200:
         item = ItemPost.objects.get(id=item_id)

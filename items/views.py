@@ -9,7 +9,7 @@ from .serializers import ContactRequestSerializer, ItemPostSerializer
 # Create your views here.
 class ItemPostViewSet(viewsets.ModelViewSet):
     serializer_class = ItemPostSerializer
-    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+    permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
         queryset = ItemPost.objects.all().order_by("-created_at")
@@ -57,3 +57,22 @@ class ContactRequestViewSet(viewsets.ModelViewSet):
             raise exceptions.ValidationError("You have already requested this item.")
 
         serializer.save(from_user=self.request.user, to_user=item.user)
+
+    @action(
+        detail=True, methods=["post"], permission_classes=[permissions.IsAuthenticated]
+    )
+    def accept(self, request, pk=None):
+        contact_request = self.get_object()
+        if contact_request.to_user != request.user:
+            raise exceptions.PermissionDenied(
+                "You can only accept requests for your own items."
+            )
+
+        contact_request.is_accepted = True
+        contact_request.save()
+        return Response(
+            {
+                "status": "request accepted",
+                "to_user_telegram": contact_request.to_user.telegram_username,
+            }
+        )

@@ -36,6 +36,7 @@ class ContactRequest(models.Model):
     item = models.ForeignKey(
         ItemPost, on_delete=models.CASCADE, related_name="contact_requests"
     )
+    is_accepted = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
