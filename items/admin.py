@@ -1,6 +1,12 @@
 from django.contrib import admin
 
-from .models import ContactRequest, ItemPost
+from .models import ContactRequest, ItemPost, University
+
+
+@admin.register(University)
+class UniversityAdmin(admin.ModelAdmin):
+    list_display = ("full_name", "short_name")
+    search_fields = ("full_name", "short_name")
 
 
 # Register your models here.
@@ -18,8 +24,8 @@ class ItemPostAdmin(admin.ModelAdmin):
 
 @admin.register(ContactRequest)
 class ContactRequestAdmin(admin.ModelAdmin):
-    list_display = ("from_user", "to_user", "item", "created_at")
-    list_filter = ("created_at",)
+    list_display = ("from_user", "to_user", "item", "is_accepted", "created_at")
+    list_filter = ("is_accepted", "created_at")
     search_fields = (
         "from_user__telegram_username",
         "to_user__telegram_username",

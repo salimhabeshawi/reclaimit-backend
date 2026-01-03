@@ -61,6 +61,16 @@ The API documentation is available in the following formats:
 - **ReDoc**: [http://127.0.0.1:8000/api/redoc/](http://127.0.0.1:8000/api/redoc/)
 - **OpenAPI Schema**: [http://127.0.0.1:8000/api/schema/](http://127.0.0.1:8000/api/schema/)
 
+## 💻 Frontend Connectivity (React/Next.js)
+
+- **CORS**: The backend is configured to allow requests from `http://localhost:3000`.
+- **JSON Format**: All list responses are paginated.
+  - **Structure**: `{"count": X, "next": "...", "previous": "...", "results": [...]}`
+- **Search & Filter**:
+  - `GET /api/items/?search=wallet`
+  - `GET /api/items/?university=AASTU`
+  - `GET /api/items/?show_resolved=true` (Defaults to false)
+
 ### Authentication
 
 - **Register**: `POST /api/register/`
@@ -73,7 +83,7 @@ The API documentation is available in the following formats:
 
 ### Items
 
-- **List Items**: `GET /api/items/` (Requires Auth)
+- **List Items**: `GET /api/items/` (Requires Auth, Paginated)
 - **Post Item**: `POST /api/items/` (Requires Auth)
   - Body: `{"title": "...", "university": "AASTU", "location_text": "...", "description": "..."}`
 - **Resolve Item**: `POST /api/items/{id}/resolve/` (Requires Auth, Finder Only)

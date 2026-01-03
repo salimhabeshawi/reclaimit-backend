@@ -13,9 +13,23 @@ class ItemPostViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         queryset = ItemPost.objects.all().order_by("-created_at")
+        
+        # Policy: Hide resolved items by default to keep the feed clean
+        show_resolved = self.request.query_params.get("show_resolved") == "true"
+        if not show_resolved:
+            queryset = queryset.filter(is_resolved=False)
+
         university = self.request.query_params.get("university")
         if university:
-            queryset = queryset.filter(university=university)
+            if university.isdigit():
+                queryset = queryset.filter(university_id=university)
+            else:
+                queryset = queryset.filter(university__short_name=university)
+        
+        search = self.request.query_params.get("search")
+        if search:
+            queryset = queryset.filter(title__icontains=search) | queryset.filter(description__icontains=search)
+            
         return queryset
 
     def perform_create(self, serializer):

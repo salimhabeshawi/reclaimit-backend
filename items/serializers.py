@@ -1,16 +1,29 @@
 from rest_framework import serializers
 
 from accounts.serializers import UserSerializer
+from .models import ContactRequest, ItemPost, University
 
-from .models import ContactRequest, ItemPost
+
+class UniversitySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = University
+        fields = ("id", "short_name", "full_name")
 
 
 class ItemPostSerializer(serializers.ModelSerializer):
+    university = serializers.SlugRelatedField(
+        queryset=University.objects.all(), slug_field="short_name"
+    )
+    university_data = UniversitySerializer(source="university", read_only=True)
+    found_by = serializers.SerializerMethodField()
+
     class Meta:
         model = ItemPost
         fields = (
             "id",
             "university",
+            "university_data",
+            "found_by",
             "title",
             "description",
             "location_text",
@@ -19,6 +32,9 @@ class ItemPostSerializer(serializers.ModelSerializer):
             "created_at",
         )
         read_only_fields = ("created_at", "is_resolved")
+
+    def get_found_by(self, obj):
+        return {"id": obj.user.id, "full_name": obj.user.full_name}
 
 
 class ContactRequestSerializer(serializers.ModelSerializer):
