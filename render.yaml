@@ -1,0 +1,21 @@
+services:
+  - type: web
+    name: reclaimit-backend
+    env: python
+    buildCommand: "./build.sh"
+    startCommand: "gunicorn config.wsgi:application"
+    plan: free
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.7
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DEBUG
+        value: "false"
+      - key: DATABASE_URL
+        fromGroup: shared-database
+        # User will need to override this with Supabase URL or use Render's env group features, 
+        # but for simple setup we just ask them to paste the value.
+        # Actually easier: just placeholder and ask user to input.
+      - key: WEB_CONCURRENCY
+        value: 4
