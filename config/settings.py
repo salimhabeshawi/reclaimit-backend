@@ -28,7 +28,7 @@ SECRET_KEY = os.getenv("SECRET_KEY", "django-insecure-7fq(bu52vj7ca0omz2_qgrgxum
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.getenv("DEBUG", "False").lower() == "true"
 
-ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
+ALLOWED_HOSTS = ["*"]
 
 # To handle Render's default domain
 RENDER_EXTERNAL_HOSTNAME = os.getenv("RENDER_EXTERNAL_HOSTNAME")
